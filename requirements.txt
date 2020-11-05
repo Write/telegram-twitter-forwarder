@@ -1,0 +1,12 @@
+certifi==2017.4.17
+envparse==0.1.6
+future==0.18
+oauthlib==1.0.3
+peewee==2.6.4
+python-telegram-bot==5.0.0
+requests==2.20.0
+requests-oauthlib==0.7.0
+six==1.10.0
+tweepy==3.7.0
+urllib3==1.24.2
+pytz
