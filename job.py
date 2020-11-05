@@ -111,6 +111,10 @@ class FetchAndSendTweetsJob(Job):
                 else:
                     tweet_text = html.unescape(tweet.retweeted_status.full_text)
 
+                if "L'édition du soir de «L'Alsace» est en ligne" in tweet_text:
+                    self.logger.debug("- - «L'Alsace» est en ligne... skipping")
+                    break
+
                 if (not tweet.in_reply_to_user_id_str and not tweet.in_reply_to_status_id_str) :
 
                     #pprint(getmembers(tweet))

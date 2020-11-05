@@ -32,7 +32,6 @@ class TwitterForwarderBot(Bot):
                 tweet.tw_id, chat.chat_id
             ))
 
-
             first_link = re.findall(r'(https?:\/\/[^\s]+)', tweet.text)
             #pprint(getmembers(first_link))
 
