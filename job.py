@@ -57,6 +57,9 @@ class FetchAndSendTweetsJob(Job):
         updated_tw_users = []
         users_to_cleanup = []
 
+        # List of Strings blacklisted. Tweets containing one of those strings will be skipped.
+        blacklist = ["L'édition du soir de «L'Alsace» est en ligne"]
+
         for tw_user in tw_users:
             try:
                 if tw_user.last_tweet_id == 0:
@@ -111,54 +114,50 @@ class FetchAndSendTweetsJob(Job):
                 else:
                     tweet_text = html.unescape(tweet.retweeted_status.full_text)
 
-                if "L'édition du soir de «L'Alsace» est en ligne" in tweet_text:
-                    self.logger.debug("- - «L'Alsace» est en ligne... skipping")
+                if tweet_text in blacklist:
+                    self.logger.debug("- - Blacklist strings detected. Skipping...")
                     break
 
-                if (not tweet.in_reply_to_user_id_str and not tweet.in_reply_to_status_id_str) :
+                if (tweet.in_reply_to_user_id_str and tweet.in_reply_to_status_id_str):
+                    self.logger.debug("- This tweet is a reply. Skipping...")
+                    break
 
-                    #pprint(getmembers(tweet))
-                    if (isRetweet):
-                        self.logger.debug('- - Retweet détécté.')
-                        userRTFrom = tweet.retweeted_status.user.screen_name
-                        tweet_text = 'RT @' + userRTFrom + ' : ' + tweet_text
-
-                    if 'media' in tweet.entities:
-                        photo_url = tweet.entities['media'][0]['media_url_https']
-                    else:
-                        for url_entity in tweet.entities['urls']:
-                            expanded_url = url_entity['expanded_url']
-                            if re.search(pattern, expanded_url):
-                                photo_url = expanded_url
-                                break
-                    if photo_url:
-                        self.logger.debug("- - Found media URL in tweet: " + photo_url)
-
+                #pprint(getmembers(tweet))
+                if (isRetweet):
+                    self.logger.debug('- - Retweet detected.')
+                    userRTFrom = tweet.retweeted_status.user.screen_name
+                    tweet_text = 'RT @' + userRTFrom + ' : ' + tweet_text
+                if 'media' in tweet.entities:
+                    photo_url = tweet.entities['media'][0]['media_url_https']
+                else:
                     for url_entity in tweet.entities['urls']:
                         expanded_url = url_entity['expanded_url']
-                        indices = url_entity['indices']
-                        display_url = tweet.full_text[indices[0]:indices[1]]
-                        tweet_text = tweet_text.replace(display_url, expanded_url)
-
-                    tw_data = {
-                        'tw_id': tweet.id,
-                        'text': tweet_text,
-                        'created_at': tweet.created_at,
-                        'twitter_user': tw_user,
-                        'photo_url': photo_url,
-                    }
-                    try:
-                        t = Tweet.get(Tweet.tw_id == tweet.id)
-                        self.logger.warning("Got duplicated tw_id on this tweet:")
-                        self.logger.warning(str(tw_data))
-                    except Tweet.DoesNotExist:
-                        tweet_rows.append(tw_data)
-
-                    if len(tweet_rows) >= self.TWEET_BATCH_INSERT_COUNT:
-                        Tweet.insert_many(tweet_rows).execute()
-                        tweet_rows = []
-                else:
-                    self.logger.debug("- Ce tweet est une réponse à un tweet")
+                        if re.search(pattern, expanded_url):
+                            photo_url = expanded_url
+                            break
+                if photo_url:
+                    self.logger.debug("- - Media URL Found in tweet: " + photo_url)
+                for url_entity in tweet.entities['urls']:
+                    expanded_url = url_entity['expanded_url']
+                    indices = url_entity['indices']
+                    display_url = tweet.full_text[indices[0]:indices[1]]
+                    tweet_text = tweet_text.replace(display_url, expanded_url)
+                tw_data = {
+                    'tw_id': tweet.id,
+                    'text': tweet_text,
+                    'created_at': tweet.created_at,
+                    'twitter_user': tw_user,
+                    'photo_url': photo_url,
+                }
+                try:
+                    t = Tweet.get(Tweet.tw_id == tweet.id)
+                    self.logger.warning("Got duplicated tw_id on this tweet:")
+                    self.logger.warning(str(tw_data))
+                except Tweet.DoesNotExist:
+                    tweet_rows.append(tw_data)
+                if len(tweet_rows) >= self.TWEET_BATCH_INSERT_COUNT:
+                    Tweet.insert_many(tweet_rows).execute()
+                    tweet_rows = []
 
         TwitterUser.update(last_fetched=datetime.now()).where(TwitterUser.id << [tw.id for tw in updated_tw_users]).execute()
 

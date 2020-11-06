@@ -1,1 +1,1 @@
-kill `pgrep py | tail -n 1`
+kill `pgrep -f "python telegram" | tail -n 1`
