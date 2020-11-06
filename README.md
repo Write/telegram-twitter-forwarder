@@ -13,8 +13,8 @@ This project is a fork from [franciscod/telegram-twitter-forwarder-bot](https://
 3. Setup the python venv `./setup.sh`
 5. Run it ! `./cron-run.sh` or `python main.py`
 
-## Features added Franciscod's code
-- Blocklist support to block tweets containing certain words (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L61))
+## Features added since Franciscod's version
+- Blocklist support to block tweets containing certain words (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L60))
 
 ## secrets.env ?
 
