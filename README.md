@@ -1,17 +1,8 @@
 # telegram-twitter-forwarder
 
-This projects aims to make a [Telegram](https://telegram.org) bot that forwards [Twitter](https://twitter.com/) updates to people, groups, channels (Working only partially require to manually change in the databse since the bot doens't answer to channels messages for now).
+This projects aims to make a [Telegram](https://telegram.org) bot that forwards [Twitter](https://twitter.com/) updates to people, groups, channels (Working only partially require to manually change in the database since the bot doesn't answer to channels messages for now).
 
 This project is a fork from [franciscod/telegram-twitter-forwarder-bot](https://github.com/franciscod/telegram-twitter-forwarder-bot)
-
-## Credit where credit is due
-
-This is based on former work:
-- [python-telegram-bot](https://github.com/leandrotoledo/python-telegram-bot)
-- [tweepy](https://github.com/tweepy/tweepy)
-- [peewee](https://github.com/coleifer/peewee)
-- [envparse](https://github.com/rconradharris/envparse)
-- also, python, pip, the internets, and so on
 
 ## How do I run this?
 
@@ -43,3 +34,15 @@ Get a consumer key, consumer secret, access token and access token secret (the l
 1. Type `crontab -e` to edit your crontask file
 2. Append this to your crontab file to check every minutes if the bot is running, if not it'll relaunch it.
 `* * * * * cd /path/to/telegram-twitter-forwarder-bot && ./cron-run.sh >> /dev/null 2>&1`
+
+## Credit
+
+This is based on former work:
+- [franciscod/telegram-twitter-forwarder-bot](https://github.com/franciscod/telegram-twitter-forwarder-bot)
+- [python-telegram-bot](https://github.com/leandrotoledo/python-telegram-bot)
+
+Tools used:
+- [tweepy](https://github.com/tweepy/tweepy)
+- [peewee](https://github.com/coleifer/peewee)
+- [envparse](https://github.com/rconradharris/envparse)
+- also, python, pip, the internets, and so on
