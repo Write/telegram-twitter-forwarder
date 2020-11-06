@@ -57,8 +57,9 @@ class FetchAndSendTweetsJob(Job):
         updated_tw_users = []
         users_to_cleanup = []
 
-        # List of Strings blocklist. Tweets containing one of those strings will be skipped.
-        blocklist = ["L'édition du soir de «L'Alsace» est en ligne"]
+        # List of Strings blocklist.
+        # Tweets containing one of those strings will be skipped.
+        blocklist = ["L'édition du soir de «L'Alsace» est en ligne", "This is a blocked string"]
 
         for tw_user in tw_users:
             try:
@@ -114,19 +115,20 @@ class FetchAndSendTweetsJob(Job):
                 else:
                     tweet_text = html.unescape(tweet.retweeted_status.full_text)
 
-                if tweet_text in blocklist:
-                    self.logger.debug("- - Blocklist strings detected. Skipping...")
-                    break
+                for blockedstr in blocklist:
+                    if blockedstr in tweet_text:
+                       print("- - Blocklist string detected. Skipping...")
+                       break
 
                 if (tweet.in_reply_to_user_id_str and tweet.in_reply_to_status_id_str):
                     self.logger.debug("- This tweet is a reply. Skipping...")
                     break
 
-                #pprint(getmembers(tweet))
                 if (isRetweet):
                     self.logger.debug('- - Retweet detected.')
                     userRTFrom = tweet.retweeted_status.user.screen_name
                     tweet_text = 'RT @' + userRTFrom + ' : ' + tweet_text
+
                 if 'media' in tweet.entities:
                     photo_url = tweet.entities['media'][0]['media_url_https']
                 else:
@@ -135,6 +137,7 @@ class FetchAndSendTweetsJob(Job):
                         if re.search(pattern, expanded_url):
                             photo_url = expanded_url
                             break
+
                 if photo_url:
                     self.logger.debug("- - Media URL Found in tweet: " + photo_url)
                 for url_entity in tweet.entities['urls']:
