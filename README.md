@@ -1,12 +1,8 @@
-# telegram-twitter-forwarder-bot
-![logo](logo/logo.png)
+# telegram-twitter-forwarder
 
-Hello! This projects aims to make a [Telegram](https://telegram.org) bot that forwards [Twitter](https://twitter.com/) updates to people, groups, channels, or whatever Telegram comes up with!
+This projects aims to make a [Telegram](https://telegram.org) bot that forwards [Twitter](https://twitter.com/) updates to people, groups, channels (Working only partially require to manually change in the databse since the bot doens't answer to channels messages for now).
 
-It was once hosted on Telegram as 
-[@TwitterForwarderBot](https://telegram.me/TwitterForwarderBot) which doesn't 
-work anymore. There are a few other instances running around:
-- (add a Pull Request linking to your instance here!)
+This project is a fork from [franciscod/telegram-twitter-forwarder-bot](https://github.com/franciscod/telegram-twitter-forwarder-bot)
 
 ## Credit where credit is due
 
@@ -17,25 +13,16 @@ This is based on former work:
 - [envparse](https://github.com/rconradharris/envparse)
 - also, python, pip, the internets, and so on
 
-
-So, big thanks to anyone who contributed on these projects! :D
-
 ## How do I run this?
 
-**The code is currently targeting Python 3.5**
+**The code is targeting Python 3.8**
 
-1. clone this thing
-2. fill secrets.env (see next readme section)
-3. create your virtualenv, activate it, etc, e.g.:
-    ```
-    virtualenv -p python3 venv
-    . venv/bin/activate
-    . secrets.env
-    ```
-4. `pip install -r requirements.txt`
-5. run it! `python main.py`
+1. Clone this repo `git clone https://github.com/Write/telegram-twitter-forwarder.git`
+2. Fill secrets.env (see next readme section)
+3. Setup the python venv `./setup.sh`
+5. Run it ! `./cron-run.sh` or `python main.py`
 
-## secrets.env?? u wot m8?
+## secrets.env ?
 
 First, you'll need a Telegram Bot Token, you can get it via BotFather ([more info here](https://core.telegram.org/bots)).
 
@@ -49,12 +36,10 @@ Bear in mind that if you don't have added a mobile phone to your Twitter account
 
 Get a consumer key, consumer secret, access token and access token secret (the latter two are optional), fill in your `secrets.env`, source it, and then run the bot!
 
-## Setting up cronjob
-
-_contributed by @llg, thanks!_
+## Setting up cronjob (Periodically check if bot is launched)
 
 **Make sure crontab user have write access to venv directory**
 
-1. use examples/cron-run.sh script in cron:
-`* * * * * cd /path/to/telegram-twitter-forwarder-bot && examples/cron-run.sh >> /dev/null 2>&1`
-2. you can change time for checking to any you want
+1. Type `crontab -e` to edit your crontask file
+2. Append this to your crontab file to check every minutes if the bot is running, if not it'll relaunch it.
+`* * * * * cd /path/to/telegram-twitter-forwarder-bot && ./cron-run.sh >> /dev/null 2>&1`
