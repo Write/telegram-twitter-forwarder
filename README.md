@@ -13,6 +13,9 @@ This project is a fork from [franciscod/telegram-twitter-forwarder-bot](https://
 3. Setup the python venv `./setup.sh`
 5. Run it ! `./cron-run.sh` or `python main.py`
 
+## Features added Franciscod's code
+- Blocklist support to block tweets containing certain words (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L61))
+
 ## secrets.env ?
 
 First, you'll need a Telegram Bot Token, you can get it via BotFather ([more info here](https://core.telegram.org/bots)).

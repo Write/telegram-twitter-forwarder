@@ -57,8 +57,8 @@ class FetchAndSendTweetsJob(Job):
         updated_tw_users = []
         users_to_cleanup = []
 
-        # List of Strings blacklisted. Tweets containing one of those strings will be skipped.
-        blacklist = ["L'édition du soir de «L'Alsace» est en ligne"]
+        # List of Strings blocklist. Tweets containing one of those strings will be skipped.
+        blocklist = ["L'édition du soir de «L'Alsace» est en ligne"]
 
         for tw_user in tw_users:
             try:
@@ -114,8 +114,8 @@ class FetchAndSendTweetsJob(Job):
                 else:
                     tweet_text = html.unescape(tweet.retweeted_status.full_text)
 
-                if tweet_text in blacklist:
-                    self.logger.debug("- - Blacklist strings detected. Skipping...")
+                if tweet_text in blocklist:
+                    self.logger.debug("- - Blocklist strings detected. Skipping...")
                     break
 
                 if (tweet.in_reply_to_user_id_str and tweet.in_reply_to_status_id_str):
