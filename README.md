@@ -14,7 +14,10 @@ This project is a fork from [franciscod/telegram-twitter-forwarder-bot](https://
 5. Run it ! `./cron-run.sh` or `python main.py`
 
 ## Features added since Franciscod's version
-- Blocklist support to block tweets containing certain words (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L60))
+
+- Blocklist support : Block tweets containing certain string (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L61))
+- Skip tweet that are reply (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#116))
+- If tweet is a retweet, use full_text insead of truncated one (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#120))
 - Use html format instead of markdown for telegram sendMessage, change the format in [bot.py](https://github.com/Write/telegram-twitter-forwarder/blob/master/bot.py#L60)
 
 ## secrets.env ?
