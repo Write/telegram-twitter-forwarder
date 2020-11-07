@@ -64,7 +64,8 @@ class FetchAndSendTweetsJob(Job):
         "L'édition du soir de «L'Alsace» est en ligne",
         "Bonjour, nous sommes avec vous et jusqu'à", 
         "Bonjour, je suis avec vous cet après-midi",
-        "circulation normale sur l'ensemble du réseau"]
+        "circulation normale sur l'ensemble du réseau"
+        ]
 
         for tw_user in tw_users:
             try:
