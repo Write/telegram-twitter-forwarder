@@ -15,6 +15,7 @@ This project is a fork from [franciscod/telegram-twitter-forwarder-bot](https://
 
 ## Features added since Franciscod's version
 - Blocklist support to block tweets containing certain words (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L60))
+- Use html format instead of markdown for telegram sendMessage, change the format in [bot.py](https://github.com/Write/telegram-twitter-forwarder/blob/master/bot.py#L60)
 
 ## secrets.env ?
 

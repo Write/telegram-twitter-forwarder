@@ -47,6 +47,7 @@ class FetchAndSendTweetsJob(Job):
         self.logger = logging.getLogger(self.name)
 
     def run(self, bot):
+
         self.logger.debug("Fetching tweets...")
         tweet_rows = []
         # fetch the tw users' tweets
@@ -59,7 +60,11 @@ class FetchAndSendTweetsJob(Job):
 
         # List of Strings blocklist.
         # Tweets containing one of those strings will be skipped.
-        blocklist = ["L'édition du soir de «L'Alsace» est en ligne", "This is a blocked string"]
+        blocklist = [
+        "L'édition du soir de «L'Alsace» est en ligne",
+        "Bonjour, nous sommes avec vous et jusqu'à", 
+        "Bonjour, je suis avec vous cet après-midi",
+        "circulation normale sur l'ensemble du réseau"]
 
         for tw_user in tw_users:
             try:
@@ -101,33 +106,32 @@ class FetchAndSendTweetsJob(Job):
                 continue
 
             for tweet in tweets:
-                #self.logger.debug("- Got tweet: {}".format(tweet.full_text))
                 self.logger.debug("- Got tweet !")
                 
-                # Check if tweet contains media, else check if it contains a link to an image
-                extensions = ('.jpg', '.jpeg', '.png', '.gif')
-                pattern = '[(%s)]$' % ')('.join(extensions)
-                photo_url = ''
-
-                isRetweet = hasattr(tweet, 'retweeted_status')
-                if (not isRetweet):
-                    tweet_text = html.unescape(tweet.full_text)
-                else:
-                    tweet_text = html.unescape(tweet.retweeted_status.full_text)
-
                 for blockedstr in blocklist:
                     if blockedstr in tweet_text:
                        print("- - Blocklist string detected. Skipping...")
                        break
 
-                if (tweet.in_reply_to_user_id_str and tweet.in_reply_to_status_id_str):
+                if (tweet.in_reply_to_user_id_str or tweet.in_reply_to_status_id_str):
                     self.logger.debug("- This tweet is a reply. Skipping...")
                     break
+
+                isRetweet = hasattr(tweet, 'retweeted_status')
+                if (isRetweet):
+                    tweet_text = html.unescape(tweet.retweeted_status.full_text)
+                else:
+                    tweet_text = html.unescape(tweet.full_text)
 
                 if (isRetweet):
                     self.logger.debug('- - Retweet detected.')
                     userRTFrom = tweet.retweeted_status.user.screen_name
                     tweet_text = 'RT @' + userRTFrom + ' : ' + tweet_text
+
+                # Check if tweet contains media, else check if it contains a link to an image
+                extensions = ('.jpg', '.jpeg', '.png', '.gif')
+                pattern = '[(%s)]$' % ')('.join(extensions)
+                photo_url = ''
 
                 if 'media' in tweet.entities:
                     photo_url = tweet.entities['media'][0]['media_url_https']
@@ -158,6 +162,7 @@ class FetchAndSendTweetsJob(Job):
                     self.logger.warning(str(tw_data))
                 except Tweet.DoesNotExist:
                     tweet_rows.append(tw_data)
+
                 if len(tweet_rows) >= self.TWEET_BATCH_INSERT_COUNT:
                     Tweet.insert_many(tweet_rows).execute()
                     tweet_rows = []
