@@ -108,14 +108,10 @@ class FetchAndSendTweetsJob(Job):
             for tweet in tweets:
                 self.logger.debug("- Got tweet !")
                 
-                for blockedstr in blocklist:
-                    if blockedstr in tweet_text:
-                       print("- - Blocklist string detected. Skipping...")
-                       break
-
-                if (tweet.in_reply_to_user_id_str or tweet.in_reply_to_status_id_str):
-                    self.logger.debug("- This tweet is a reply. Skipping...")
-                    break
+                # Check if tweet contains media, else check if it contains a link to an image
+                extensions = ('.jpg', '.jpeg', '.png', '.gif')
+                pattern = '[(%s)]$' % ')('.join(extensions)
+                photo_url = ''
 
                 isRetweet = hasattr(tweet, 'retweeted_status')
                 if (isRetweet):
@@ -123,15 +119,19 @@ class FetchAndSendTweetsJob(Job):
                 else:
                     tweet_text = html.unescape(tweet.full_text)
 
+                for blockedstr in blocklist:
+                    if blockedstr in tweet_text:
+                       print("- - Blocklist string detected. Skipping...")
+                       break
+
+                if (tweet.in_reply_to_user_id_str and tweet.in_reply_to_status_id_str):
+                    self.logger.debug("- This tweet is a reply. Skipping...")
+                    break
+
                 if (isRetweet):
                     self.logger.debug('- - Retweet detected.')
                     userRTFrom = tweet.retweeted_status.user.screen_name
                     tweet_text = 'RT @' + userRTFrom + ' : ' + tweet_text
-
-                # Check if tweet contains media, else check if it contains a link to an image
-                extensions = ('.jpg', '.jpeg', '.png', '.gif')
-                pattern = '[(%s)]$' % ')('.join(extensions)
-                photo_url = ''
 
                 if 'media' in tweet.entities:
                     photo_url = tweet.entities['media'][0]['media_url_https']
@@ -162,7 +162,6 @@ class FetchAndSendTweetsJob(Job):
                     self.logger.warning(str(tw_data))
                 except Tweet.DoesNotExist:
                     tweet_rows.append(tw_data)
-
                 if len(tweet_rows) >= self.TWEET_BATCH_INSERT_COUNT:
                     Tweet.insert_many(tweet_rows).execute()
                     tweet_rows = []
