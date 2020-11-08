@@ -28,63 +28,46 @@ class TwitterForwarderBot(Bot):
 
     def send_tweet(self, chat, tweet):
         try:
-            self.logger.debug("Sending tweet {} to chat {}...".format(
-                tweet.tw_id, chat.chat_id
-            ))
-
-            first_link = re.findall(r'(https?:\/\/[^\s]+)', tweet.text)
-            #pprint(getmembers(first_link))
+            self.logger.debug("Sending tweet {} to chat {}...".format(tweet.tw_id, chat.chat_id))
 
             '''
             Use a soft-hyphen to put an invisible link to the first
             image in the tweet, which will then be displayed as preview
+            Get first link to use as preview(photo_url) if tweet.photo_url isn't defined
             '''
+            first_link = re.findall(r'(https?:\/\/[^\s]+)', tweet.text)
             photo_url = ''
             if tweet.photo_url:
                 photo_url = '<a href="%s">\xad</a>' % tweet.photo_url
             elif first_link:
                 if first_link[0]:
-                  #  print('Single link: ');
-                  #  print(sanitize_url(first_link[0]))
                     photo_url = '<a href="%s">\xad</a>' % sanitize_url(first_link[0])
-                #else:
-                 #   print('No link: first[0]');
 
+            # Timezone not used right now.
             created_dt = utc.localize(tweet.created_at)
-            #if chat.timezone_name is not None:
-            #    tz = timezone(chat.timezone_name)
-            #    created_dt = created_dt.astimezone(tz)
+            if chat.timezone_name is not None:
+                tz = timezone(chat.timezone_name)
+                created_dt = created_dt.astimezone(tz)
             created_at = created_dt.strftime('%Y-%m-%d %H:%M:%S %Z')
 
-            #pprint(getmembers(tweet))
-
+            # Change format based on chat_id. Hack used for personal use.
             if (chat.chat_id == -1001332809371 or chat.chat_id == -1001291532104 or chat.chat_id == -1001153548625):
-                self.sendMessage(
-                chat_id=chat.chat_id,
-                disable_web_page_preview=not photo_url,
-                text="""
+                tweet_format_text = """
 {link_preview}{text}
 — <b><a href='https://twitter.com/{screen_name}/status/{tw_id}'>Ouvrir le Tweet</a></b>
 """
-                    .format(
-                    link_preview=photo_url,
-                    text=prepare_tweet_text(tweet.text),
-                    name=tweet.name,
-                    screen_name=tweet.screen_name,
-                    created_at=created_at,
-                    tw_id=tweet.tw_id,
-                ),
-                parse_mode=telegram.ParseMode.HTML)
+            # 'Normal format' :
             else:
-                self.sendMessage(
-                chat_id=chat.chat_id,
-                disable_web_page_preview=not photo_url,
-                text="""
+                tweet_format_text = """
 {link_preview}<b>{name}</b> (<a href='https://twitter.com/{screen_name}'>@{screen_name}</a>) :
 {text}
 — <b><a href='https://twitter.com/{screen_name}/status/{tw_id}'>Ouvrir le Tweet</a></b>
 """
-                    .format(
+
+            self.sendMessage(
+                chat_id=chat.chat_id,
+                disable_web_page_preview=not photo_url,
+                text=tweet_format_text.format(
                     link_preview=photo_url,
                     text=prepare_tweet_text(tweet.text),
                     name=tweet.name,
@@ -92,7 +75,8 @@ class TwitterForwarderBot(Bot):
                     created_at=created_at,
                     tw_id=tweet.tw_id,
                 ),
-                parse_mode=telegram.ParseMode.HTML)
+                parse_mode=telegram.ParseMode.HTML
+            )
 
         except TelegramError as e:
             self.logger.info("Couldn't send tweet {} to chat {}: {}".format(

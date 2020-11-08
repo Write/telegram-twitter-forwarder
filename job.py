@@ -107,7 +107,7 @@ class FetchAndSendTweetsJob(Job):
                 continue
 
             for tweet in tweets:
-                self.logger.debug("- Got tweet !")
+                self.logger.debug("- (" + tw_user.screen_name +") Got tweet !")
                 
                 # Check if tweet contains media, else check if it contains a link to an image
                 extensions = ('.jpg', '.jpeg', '.png', '.gif')
@@ -122,17 +122,18 @@ class FetchAndSendTweetsJob(Job):
 
                 for blockedstr in blocklist:
                     if blockedstr in tweet_text:
-                       print("- - Blocklist string detected. Skipping...")
+                       self.logger.debug("- ("+ tw_user.screen_name +") - Blocklist string detected. Skipping...")
                        break
 
                 if (tweet.in_reply_to_user_id_str and tweet.in_reply_to_status_id_str):
-                    self.logger.debug("- This tweet is a reply. Skipping...")
+                    self.logger.debug("- ("+ tw_user.screen_name +") This tweet is a reply. Skipping...")
                     break
 
                 if (isRetweet):
-                    self.logger.debug('- - Retweet detected.')
+                    self.logger.debug('- ('+ tw_user.screen_name +') Retweet detected.')
                     userRTFrom = tweet.retweeted_status.user.screen_name
                     tweet_text = 'RT @' + userRTFrom + ' : ' + tweet_text
+
 
                 if 'media' in tweet.entities:
                     photo_url = tweet.entities['media'][0]['media_url_https']
@@ -143,8 +144,26 @@ class FetchAndSendTweetsJob(Job):
                             photo_url = expanded_url
                             break
 
+                # Check extended_entities for video/gif and fetch highest quality that work with telegram
+                # (1280*720 isn't fetched so we take the max which is 640*360)
+                if hasattr(tweet, 'extended_entities'):
+                    self.logger.debug('- ('+ tw_user.screen_name +') Extended_entities found !')
+                    media_type = tweet.extended_entities['media'][0]['type']
+                    if (media_type == 'video' or media_type == 'animated_gif'):
+                        self.logger.debug('- ('+ tw_user.screen_name +') - Type video or gif')
+                        for variant in tweet.extended_entities['media'][0]['video_info']['variants']:
+                            if '.mp4' in variant['url']:
+                                self.logger.debug('- ('+ tw_user.screen_name +') - Bitrate: '+ str(variant['bitrate']) +' - Variant found: ' + variant['url'])
+                                # Telegram doesn't fetch 1280*720 video from Twitter, 
+                                # I mean there's a limit in size, need to dig more
+                                if '640x360' in variant['url'] or '360x640' in variant['url'] or '720x720' in variant['url']:
+                                    self.logger.debug('- ('+ tw_user.screen_name +') - - - Max size found: ' + variant['url'])
+                                    photo_url = variant['url']
+                                    break;
+
                 if photo_url:
-                    self.logger.debug("- - Media URL Found in tweet: " + photo_url)
+                    self.logger.debug("- Chosen Media URL : " + photo_url)
+
                 for url_entity in tweet.entities['urls']:
                     expanded_url = url_entity['expanded_url']
                     indices = url_entity['indices']
