@@ -21,8 +21,9 @@ This project is a fork from [franciscod/telegram-twitter-forwarder-bot](https://
 - If tweet is a retweet, use full_text insead of truncated one (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L145))
 - Use html format instead of markdown for telegram sendMessage, change the format in [bot.py](https://github.com/Write/telegram-twitter-forwarder/blob/master/bot.py#L56)
 
-## Need to be fixed
+## Need to be fixed / Added
 - Bot can't read message in channel. Only in group for now. If we change manually the channel ID in database after setting it up in a group, it work great. (Forward a message from your channel to @JsonDumpBot to know it's ID). We certainly need to update from python-telegram-bot@5.0 to fix it — They are at v13.0 now...
+- Add a config file to enable / disable features
 
 ## secrets.env ?
 
