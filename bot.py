@@ -28,7 +28,7 @@ class TwitterForwarderBot(Bot):
 
     def send_tweet(self, chat, tweet):
         try:
-            self.logger.debug("Sending tweet {} to chat {}...".format(tweet.tw_id, chat.chat_id))
+            self.logger.debug("("+ tweet.name +") - Sending tweet {} to chat {}...".format(tweet.tw_id, chat.chat_id))
 
             '''
             Use a soft-hyphen to put an invisible link to the first
@@ -42,6 +42,9 @@ class TwitterForwarderBot(Bot):
             elif first_link:
                 if first_link[0]:
                     photo_url = '<a href="%s">\xad</a>' % sanitize_url(first_link[0])
+                if len(first_link) > 1:
+                    self.logger.debug("("+ tweet.name +") - 1st link found: " + sanitize_url(first_link[0]))
+                    self.logger.debug("("+ tweet.name +") - 2nd link found: " + sanitize_url(first_link[1]))
 
             # Timezone not used right now.
             created_dt = utc.localize(tweet.created_at)

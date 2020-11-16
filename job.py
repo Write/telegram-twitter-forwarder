@@ -14,12 +14,26 @@ from pprint import pprint
 
 from models import TwitterUser, Tweet, Subscription, db, TelegramChat
 
+import sys
+import requests
+
 INFO_CLEANUP = {
     'NOTFOUND': "Your subscription to @{} was removed because that profile doesn't exist anymore. Maybe the account's name changed?",
     'PROTECTED': "Your subscription to @{} was removed because that profile is protected and can't be fetched.",
 }
 
 class FetchAndSendTweetsJob(Job):
+
+
+    # List of Strings blocklist.
+    # Tweets containing one of those strings will be skipped.
+    blocklist = [
+        "circulation normale",
+        "je suis avec vous",
+        "nous sommes avec vous",
+        "avec vous cet après-midi"
+    ]
+
     # Twitter API rate limit parameters
     LIMIT_WINDOW = 15 * 60
     LIMIT_COUNT = 300
@@ -57,15 +71,6 @@ class FetchAndSendTweetsJob(Job):
                          .order_by(TwitterUser.last_fetched)))
         updated_tw_users = []
         users_to_cleanup = []
-
-        # List of Strings blocklist.
-        # Tweets containing one of those strings will be skipped.
-        blocklist = [
-        "L'édition du soir de «L'Alsace» est en ligne",
-        "Bonjour, nous sommes avec vous et jusqu'à", 
-        "Bonjour, je suis avec vous cet après-midi",
-        "circulation normale sur l'ensemble du réseau"
-        ]
 
         for tw_user in tw_users:
             try:
@@ -107,7 +112,8 @@ class FetchAndSendTweetsJob(Job):
                 continue
 
             for tweet in tweets:
-                self.logger.debug("- (" + tw_user.screen_name +") Got tweet !")
+       
+                self.logger.debug("- (" + tw_user.screen_name +") Got tweet.")
                 
                 # Check if tweet contains media, else check if it contains a link to an image
                 extensions = ('.jpg', '.jpeg', '.png', '.gif')
@@ -120,10 +126,17 @@ class FetchAndSendTweetsJob(Job):
                 else:
                     tweet_text = html.unescape(tweet.full_text)
 
-                for blockedstr in blocklist:
-                    if blockedstr in tweet_text:
-                       self.logger.debug("- ("+ tw_user.screen_name +") - Blocklist string detected. Skipping...")
+                self.logger.debug("- ("+ tw_user.screen_name +") - " + tweet_text)
+
+                isBlocked = False
+                for blockedstr in self.blocklist:
+                    if blockedstr.lower() in tweet_text.lower():
+                       self.logger.debug("- ("+ tw_user.screen_name +") - Blocked string : " + blockedstr);
+                       isBlocked = True
                        break
+                if isBlocked:
+                    self.logger.debug("- ("+ tw_user.screen_name +") - Blocked string. Going to next tweet.")
+                    break
 
                 if (tweet.in_reply_to_user_id_str and tweet.in_reply_to_status_id_str):
                     self.logger.debug("- ("+ tw_user.screen_name +") This tweet is a reply. Skipping...")
@@ -134,7 +147,6 @@ class FetchAndSendTweetsJob(Job):
                     userRTFrom = tweet.retweeted_status.user.screen_name
                     tweet_text = 'RT @' + userRTFrom + ' : ' + tweet_text
 
-
                 if 'media' in tweet.entities:
                     photo_url = tweet.entities['media'][0]['media_url_https']
                 else:
@@ -144,31 +156,51 @@ class FetchAndSendTweetsJob(Job):
                             photo_url = expanded_url
                             break
 
-                # Check extended_entities for video/gif and fetch highest quality that work with telegram
-                # (1280*720 isn't fetched so we take the max which is 640*360)
-                if hasattr(tweet, 'extended_entities'):
-                    self.logger.debug('- ('+ tw_user.screen_name +') Extended_entities found !')
-                    media_type = tweet.extended_entities['media'][0]['type']
-                    if (media_type == 'video' or media_type == 'animated_gif'):
-                        self.logger.debug('- ('+ tw_user.screen_name +') - Type video or gif')
-                        for variant in tweet.extended_entities['media'][0]['video_info']['variants']:
-                            if '.mp4' in variant['url']:
-                                self.logger.debug('- ('+ tw_user.screen_name +') - Bitrate: '+ str(variant['bitrate']) +' - Variant found: ' + variant['url'])
-                                # Telegram doesn't fetch 1280*720 video from Twitter, 
-                                # I mean there's a limit in size, need to dig more
-                                if '640x360' in variant['url'] or '360x640' in variant['url'] or '720x720' in variant['url']:
-                                    self.logger.debug('- ('+ tw_user.screen_name +') - - - Max size found: ' + variant['url'])
-                                    photo_url = variant['url']
-                                    break;
+                # Cancel if retweet himself
+                if (isRetweet):
+                    if (tw_user.screen_name == tweet.retweeted_status.user.screen_name):
+                        self.logger.debug("- ("+ tw_user.screen_name +") Retweeted target is himself. Skipping...")
+                        break
+
+                # Check extended_entities in tweet or retweet for video/gif
+                if (isRetweet):
+                    tweetSearched = tweet.retweeted_status
+                else:
+                    tweetSearched = tweet
+
+                if hasattr(tweetSearched, 'extended_entities'):
+                        self.logger.debug('- ('+ tw_user.screen_name +') tweetSearched.extended_entities found.')
+                        media_type = tweetSearched.extended_entities['media'][0]['type']
+                        if (media_type == 'video' or media_type == 'animated_gif'):
+                            self.logger.debug('- ('+ tw_user.screen_name +') - Type video or gif in retweeted_status.')
+                            for variant in tweetSearched.extended_entities['media'][0]['video_info']['variants']:
+                                if '.mp4' in variant['url']:
+                                    # Number of bytes in a megabyte
+                                    MBFACTOR = float(1 << 20)
+                                    # Send HEAD request to get video (file) size.
+                                    response = requests.head(variant['url'], allow_redirects=True)
+                                    video_size = response.headers.get('content-length', 0)
+                                    video_size_human = '{:.2f}'.format(int(video_size) / MBFACTOR)
+                                    self.logger.debug('- ('+ tw_user.screen_name +') - Size: ' + video_size_human +' MB - Variant found: ' + variant['url'])
+                                    if (float(video_size_human) <= 10.00):
+                                        self.logger.debug('- ('+ tw_user.screen_name +') - - Video URL (<=10MB) Chosen: ' + variant['url'])
+                                        photo_url = variant['url']
+                                        break;
+                                    elif '640x360' in variant['url'] or '360x640' in variant['url'] or '720x720' in variant['url'] or '540x540' in variant['url'] or '320x530' in variant['url'] or '360x596' in variant['url']:
+                                        self.logger.debug('- ('+ tw_user.screen_name +') - - Video URL Chosen: ' + variant['url'])
+                                        photo_url = variant['url']
+                                        break;
 
                 if photo_url:
-                    self.logger.debug("- Chosen Media URL : " + photo_url)
+                    self.logger.debug("- ("+ tw_user.screen_name +") Chosen Media URL: " + photo_url)
 
                 for url_entity in tweet.entities['urls']:
                     expanded_url = url_entity['expanded_url']
+                    self.logger.debug('- ('+ tw_user.screen_name +') - Expanded_url: ' + expanded_url);
                     indices = url_entity['indices']
                     display_url = tweet.full_text[indices[0]:indices[1]]
                     tweet_text = tweet_text.replace(display_url, expanded_url)
+
                 tw_data = {
                     'tw_id': tweet.id,
                     'text': tweet_text,
@@ -176,12 +208,14 @@ class FetchAndSendTweetsJob(Job):
                     'twitter_user': tw_user,
                     'photo_url': photo_url,
                 }
+
                 try:
                     t = Tweet.get(Tweet.tw_id == tweet.id)
                     self.logger.warning("Got duplicated tw_id on this tweet:")
                     self.logger.warning(str(tw_data))
                 except Tweet.DoesNotExist:
                     tweet_rows.append(tw_data)
+
                 if len(tweet_rows) >= self.TWEET_BATCH_INSERT_COUNT:
                     Tweet.insert_many(tweet_rows).execute()
                     tweet_rows = []
@@ -227,7 +261,7 @@ class FetchAndSendTweetsJob(Job):
                            ):
                     bot.send_tweet(s.tg_chat, tw)
 
-                # save the latest tweet sent on this subscription
+                # Save the latest tweet sent on this subscription
                 s.last_tweet_id = s.tw_user.last_tweet_id
                 s.save()
                 continue
