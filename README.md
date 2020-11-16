@@ -15,10 +15,14 @@ This project is a fork from [franciscod/telegram-twitter-forwarder-bot](https://
 
 ## Features added since Franciscod's version
 
-- Blocklist support : Block tweets containing certain string (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L61) and [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L123))
-- Skip tweet that are reply (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L128))
-- If tweet is a retweet, use full_text insead of truncated one (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L132))
-- Use html format instead of markdown for telegram sendMessage, change the format in [bot.py](https://github.com/Write/telegram-twitter-forwarder/blob/master/bot.py#L60)
+- Blocklist support : Block tweets containing certain string (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L28) and [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L131))
+- Skip tweet that are reply (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L141))
+- Skip tweet that retweet itself (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L159))
+- If tweet is a retweet, use full_text insead of truncated one (See [here](https://github.com/Write/telegram-twitter-forwarder/blob/master/job.py#L145))
+- Use html format instead of markdown for telegram sendMessage, change the format in [bot.py](https://github.com/Write/telegram-twitter-forwarder/blob/master/bot.py#L56)
+
+## Need to be fixed
+- Bot can't read message in channel. Only in group for now. If we change manually the channel ID in database after setting it up in a group, it work great. (Forward a message from your channel to @JsonDumpBot to know it's ID). We certainly need to update from python-telegram-bot@5.0 to fix it — They are at v13.0 now...
 
 ## secrets.env ?
 
