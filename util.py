@@ -33,6 +33,9 @@ def remove_after_ext(text):
 def remove_utm(text):
     return re.sub(r'\?utm_.*', '', text)
 
+def remove_hashtag_utm(text):
+    return re.sub(r'#utm_.*', '', text)
+
 def remove_cmp(text):
     return re.sub(r'\?CMP.*', '', text)
 
@@ -71,6 +74,7 @@ def html_twitter_hashtags(text):
 def sanitize_url(url):
     res = remove_echobox(url)
     res = remove_utm(res)
+    res = remove_hashtag_utm(res)
     res = remove_origine(res)
     res = remove_cmp(res)
     return res

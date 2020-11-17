@@ -4,7 +4,7 @@ import tweepy
 from envparse import Env
 from telegram.ext import CommandHandler
 from telegram.ext import Updater
-from telegram.ext.messagehandler import MessageHandler, Filters
+from telegram.ext.messagehandler import MessageHandler
 
 from bot import TwitterForwarderBot
 from commands import *
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     dispatcher.add_handler(CommandHandler('verify', cmd_verify, pass_args=True))
     dispatcher.add_handler(CommandHandler('export_friends', cmd_export_friends))
     dispatcher.add_handler(CommandHandler('set_timezone', cmd_set_timezone, pass_args=True))
-    dispatcher.add_handler(MessageHandler([Filters.text], handle_chat))
+    dispatcher.add_handler(MessageHandler('', handle_chat))
 
     # put job
     queue = updater.job_queue
