@@ -31,7 +31,14 @@ class FetchAndSendTweetsJob(Job):
         "circulation normale",
         "je suis avec vous",
         "nous sommes avec vous",
-        "avec vous cet après-midi"
+        "avec vous cet après-midi",
+        "pour rester au courant de l'actualité sur tous",
+        "photo du jour est disponible",
+        "SONDAGE |",
+        "Betclic",
+        "La Plume Libre recrute",
+        "tousuncotefoot",
+        "freebets"
     ]
 
     # Twitter API rate limit parameters
@@ -131,21 +138,42 @@ class FetchAndSendTweetsJob(Job):
                 isBlocked = False
                 for blockedstr in self.blocklist:
                     if blockedstr.lower() in tweet_text.lower():
-                       self.logger.debug("- ("+ tw_user.screen_name +") - Blocked string : " + blockedstr);
+                       self.logger.debug("- ("+ tw_user.screen_name +") - Blocked string: " + blockedstr);
                        isBlocked = True
                        break
                 if isBlocked:
                     self.logger.debug("- ("+ tw_user.screen_name +") - Blocked string. Going to next tweet.")
                     break
+                  
+                # Only catch reply that are reply to themselves. (For example news source replying to their own tweets)
+                if (tweet.in_reply_to_status_id_str):
+                    if tweet.in_reply_to_screen_name == tw_user.screen_name:
+                        is_reply = True
+                        reply_to = tweet.in_reply_to_status_id_str
+                        self.logger.debug("- ("+ tw_user.screen_name +") - Reply to user: " + tweet.in_reply_to_screen_name + " - status id: " + tweet.in_reply_to_status_id_str)
+                    else:
+                        self.logger.debug("- ("+ tw_user.screen_name +") - Reply to an other user: " + tweet.in_reply_to_screen_name + ". Tweet canceled.")
+                        break
+                else:
+                    reply_to = ''
+                    is_reply = False
 
-                if (tweet.in_reply_to_user_id_str and tweet.in_reply_to_status_id_str):
-                    self.logger.debug("- ("+ tw_user.screen_name +") This tweet is a reply. Skipping...")
-                    break
+                users_skip_retweet_prefix = [ 'strasbourg', 'F3Alsace', 'bleualsace', 'Alsace', 'Tanziloic' ]
 
-                if (isRetweet):
+                if (isRetweet and tw_user.screen_name not in users_skip_retweet_prefix) :
                     self.logger.debug('- ('+ tw_user.screen_name +') Retweet detected.')
                     userRTFrom = tweet.retweeted_status.user.screen_name
-                    tweet_text = 'RT @' + userRTFrom + ' : ' + tweet_text
+                    tweet_text = 'Retweet @' + userRTFrom + ' : ' + tweet_text
+                    # Check if retweeted user (userRTFrom) is in blocklist
+                    isBlockedRT = False
+                    for blockedstr in self.blocklist:
+                        if blockedstr.lower() in userRTFrom.lower():
+                           self.logger.debug("- ("+ tw_user.screen_name +") - Blocked string: " + blockedstr);
+                           isBlockedRT = True
+                           break
+                    if isBlockedRT:
+                        self.logger.debug("- ("+ tw_user.screen_name +") - Blocked string. Going to next tweet.")
+                        break
 
                 if 'media' in tweet.entities:
                     photo_url = tweet.entities['media'][0]['media_url_https']
@@ -171,6 +199,7 @@ class FetchAndSendTweetsJob(Job):
                 if hasattr(tweetSearched, 'extended_entities'):
                         self.logger.debug('- ('+ tw_user.screen_name +') tweetSearched.extended_entities found.')
                         media_type = tweetSearched.extended_entities['media'][0]['type']
+                        self.logger.debug('- ('+ tw_user.screen_name +') Media type : ' + tweetSearched.extended_entities['media'][0]['type'])
                         if (media_type == 'video' or media_type == 'animated_gif'):
                             self.logger.debug('- ('+ tw_user.screen_name +') - Type video or gif in retweeted_status.')
                             for variant in tweetSearched.extended_entities['media'][0]['video_info']['variants']:
@@ -182,6 +211,7 @@ class FetchAndSendTweetsJob(Job):
                                     video_size = response.headers.get('content-length', 0)
                                     video_size_human = '{:.2f}'.format(int(video_size) / MBFACTOR)
                                     self.logger.debug('- ('+ tw_user.screen_name +') - Size: ' + video_size_human +' MB - Variant found: ' + variant['url'])
+                                    # Get video less or equals to 10MB
                                     if (float(video_size_human) <= 10.00):
                                         self.logger.debug('- ('+ tw_user.screen_name +') - - Video URL (<=10MB) Chosen: ' + variant['url'])
                                         photo_url = variant['url']
@@ -190,6 +220,9 @@ class FetchAndSendTweetsJob(Job):
                                         self.logger.debug('- ('+ tw_user.screen_name +') - - Video URL Chosen: ' + variant['url'])
                                         photo_url = variant['url']
                                         break;
+                        elif (media_type == 'photo'):
+                            self.logger.debug('- ('+ tw_user.screen_name +') - Type photo in retweeted_status.')
+                            photo_url = tweetSearched.extended_entities['media'][0]['media_url_https']
 
                 if photo_url:
                     self.logger.debug("- ("+ tw_user.screen_name +") Chosen Media URL: " + photo_url)
@@ -207,6 +240,8 @@ class FetchAndSendTweetsJob(Job):
                     'created_at': tweet.created_at,
                     'twitter_user': tw_user,
                     'photo_url': photo_url,
+                    'reply_to': reply_to,
+                    'is_reply': is_reply,
                 }
 
                 try:
@@ -233,18 +268,15 @@ class FetchAndSendTweetsJob(Job):
 
         for s in subscriptions:
             # are there new tweets? send em all!
-            self.logger.debug(
-                "Checking subscription {} {}".format(s.tg_chat.chat_id, s.tw_user.screen_name))
+            self.logger.debug("Checking subscription {} {}".format(s.tg_chat.chat_id, s.tw_user.screen_name))
 
             if s.last_tweet_id == 0:  # didn't receive any tweet yet
                 try:
-                    tw = s.tw_user.tweets.select() \
-                        .order_by(Tweet.tw_id.desc()) \
-                        .first()
+                    tw = s.tw_user.tweets.select().order_by(Tweet.tw_id.desc()).first()
                     if tw is None:
                         self.logger.warning("Something fishy is going on here...")
                     else:
-                        bot.send_tweet(s.tg_chat, tw)
+                        bot.send_tweet(s.tg_chat, tw, False, '')
                         # save the latest tweet sent on this subscription
                         s.last_tweet_id = tw.tw_id
                         s.save()
@@ -255,11 +287,19 @@ class FetchAndSendTweetsJob(Job):
 
             if s.tw_user.last_tweet_id > s.last_tweet_id:
                 self.logger.debug("- Some fresh tweets here!")
-                for tw in (s.tw_user.tweets.select()
-                                    .where(Tweet.tw_id > s.last_tweet_id)
-                                    .order_by(Tweet.tw_id.asc())
-                           ):
-                    bot.send_tweet(s.tg_chat, tw)
+                for tw in (s.tw_user.tweets.select().where(Tweet.tw_id > s.last_tweet_id).order_by(Tweet.tw_id.asc())):
+
+                    # Check if is a reply. If it's a reply check if reply is in db and send the reply_tweet with it.
+                    if (tw.is_reply):
+                        reply_to = s.tw_user.tweets.select().where(Tweet.tw_id == tw.reply_to).first()
+                        if (reply_to != None):
+                            self.logger.debug("- Replied tweet in db. Text is: " + reply_to.text)
+                            bot.send_tweet(s.tg_chat, tw, tw.is_reply, reply_to)
+                        else:
+                            self.logger.debug("- Is a reply but replied tweet not in db")
+                            bot.send_tweet(s.tg_chat, tw, False, '')
+                    else:
+                        bot.send_tweet(s.tg_chat, tw, False, '')
 
                 # Save the latest tweet sent on this subscription
                 s.last_tweet_id = s.tw_user.last_tweet_id

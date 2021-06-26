@@ -4,6 +4,6 @@ then
     echo "Already running"
     exit 1
 else
-    ./launch-program.sh 2>&1 | tee -a ./log/debug-$(date +%d-%B-%Y).log
+    echo "Not running"
     exit 0
 fi

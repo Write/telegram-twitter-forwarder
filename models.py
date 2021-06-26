@@ -75,6 +75,8 @@ class Tweet(Model):
     created_at = DateTimeField()
     twitter_user = ForeignKeyField(TwitterUser, related_name='tweets')
     photo_url = TextField(default='')
+    reply_to = TextField(default='')
+    is_reply = BooleanField(default=False)
 
     @property
     def screen_name(self):
@@ -101,6 +103,8 @@ operations = [
     migrator.add_column('telegramchat', 'twitter_secret', TelegramChat.twitter_secret),
     migrator.add_column('telegramchat', 'timezone_name', TelegramChat.timezone_name),
     migrator.add_column('telegramchat', 'delete_soon', TelegramChat.delete_soon),
+    migrator.add_column('tweet', 'is_reply', Tweet.is_reply),
+    migrator.add_column('tweet', 'reply_to', Tweet.reply_to),
 ]
 for op in operations:
     try:
